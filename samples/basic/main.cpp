@@ -23,6 +23,15 @@ bool ray_intersect(const vector3f& o, const vector3f& dir, const vector3f& c, fl
     return true;
 }
 
+struct light {
+    light(const vector3f& position, float intensity) : position(position), intensity(intensity)
+    {
+
+    }
+    vector3f position;
+    float intensity;
+};
+
 struct sphere {
     vector3f centre;
     float radius;
@@ -37,20 +46,26 @@ struct sphere {
     }
 };
 
-vector3f cast_ray(const vector3f& orig, const vector3f& dir, std::vector<sphere>& spheres)
+vector3f cast_ray(const vector3f& orig, const vector3f& dir, std::vector<sphere>& spheres, const light& light)
 {
+    vector3f d = dir.unit();
+    float diffuse_light_intensity = 0.0;
     float sphere_dist = std::numeric_limits<float>::max();
     for (const sphere& sphere : spheres)
     {
         if (sphere.intersect(orig, dir, sphere_dist))
         {
-            return sphere.colour;
+            const vector3f p = orig + (dir * sphere_dist);
+            const vector3f diffuse_light_dir = (light.position - p).unit();
+            const vector3f normal = (p - sphere.centre).unit();
+            const float diffuse_light_intensity = light.intensity * std::max(0.0f, diffuse_light_dir.dot(normal));
+            return sphere.colour * diffuse_light_intensity;
         }
     }
     return vector3f{ 0.2, 0.2, 0.2 };
 }
 
-void render(std::vector<sphere>& spheres) {
+void render(std::vector<sphere>& spheres, const light& light) {
     const int width = 1024;
     const int height = 768;
     TGAImage framebuffer(width, height, TGAImage::RGB);
@@ -69,7 +84,7 @@ void render(std::vector<sphere>& spheres) {
             float x = (2.0*(i + 0.5) / static_cast<float>(width) - 1) * std::tan(fov / 2.0)*width / static_cast<float>(height);
             float y = -(2.0*(j + 0.5) / static_cast<float>(height) - 1) * std::tan(fov / 2.0);
             vector3f dir = vector3f{ x, y, -1 }.unit();
-            vector3f colour = cast_ray(vector3f{ 0,0,0 }, dir, spheres);
+            vector3f colour = cast_ray(vector3f{ 0,0,0 }, dir, spheres, light);
             unsigned char r = static_cast <unsigned char>(255.0 * colour[0]);
             unsigned char g = static_cast <unsigned char>(255.0 * colour[1]);
             unsigned char b = static_cast <unsigned char>(255.0 * colour[2]);
@@ -77,17 +92,20 @@ void render(std::vector<sphere>& spheres) {
         }
     }
     
-    framebuffer.write_tga_file("framebuffer-02.tga");
+    framebuffer.write_tga_file("framebuffer.tga");
 }
 
 int main(int argc, char** argv)
 {
     std::vector<sphere> spheres;
+    // sort closest to farthest
     spheres.push_back(sphere({ -3, 0, -16 }, 2.0, { 0.0,0.0,0.8 }));
-    spheres.push_back(sphere({ 2, 2.5, -24 }, 2.0, { 1.0,0.0,0.0 }));
     spheres.push_back(sphere({ -2, -5, -20 }, 2.0, { 0.0,0.8,0.0 }));
+    spheres.push_back(sphere({ 2, 2.5, -24 }, 2.0, { 1.0,0.0,0.0 }));
     spheres.push_back(sphere({ 1, 1, -30 }, 2.0, { 0.0,0.8,0.8 }));
+    
+    light l0({3,10,0}, 0.8);
 
-    render(spheres);
+    render(spheres, l0);
     return 0;
 }
