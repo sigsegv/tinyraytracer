@@ -1,4 +1,6 @@
 #include <math.h>
+#include <algorithm>
+#include <vector>
 #include <tgaimage.h>
 #include <vector3.hpp>
 
@@ -24,23 +26,31 @@ bool ray_intersect(const vector3f& o, const vector3f& dir, const vector3f& c, fl
 struct sphere {
     vector3f centre;
     float radius;
+    vector3f colour;
+    sphere(const vector3f& centre, float radius, const vector3f& colour) : centre(centre), radius(radius), colour(colour)
+    {
+
+    }
     bool intersect(const vector3f& o, const vector3f& dir, float &t) const
     {
         return ray_intersect(o, dir, centre, radius, t);
     }
 };
 
-vector3f cast_ray(const vector3f& orig, const vector3f& dir, const sphere& sphere)
+vector3f cast_ray(const vector3f& orig, const vector3f& dir, std::vector<sphere>& spheres)
 {
     float sphere_dist = std::numeric_limits<float>::max();
-    if (!sphere.intersect(orig, dir, sphere_dist))
+    for (const sphere& sphere : spheres)
     {
-        return vector3f{ 0.2, 0.7, 0.8 };
+        if (sphere.intersect(orig, dir, sphere_dist))
+        {
+            return sphere.colour;
+        }
     }
-    return vector3f{ 0.4, 0.4, 0.3 };
+    return vector3f{ 0.2, 0.2, 0.2 };
 }
 
-void render(const sphere& sphere) {
+void render(std::vector<sphere>& spheres) {
     const int width = 1024;
     const int height = 768;
     TGAImage framebuffer(width, height, TGAImage::RGB);
@@ -59,7 +69,7 @@ void render(const sphere& sphere) {
             float x = (2.0*(i + 0.5) / static_cast<float>(width) - 1) * std::tan(fov / 2.0)*width / static_cast<float>(height);
             float y = -(2.0*(j + 0.5) / static_cast<float>(height) - 1) * std::tan(fov / 2.0);
             vector3f dir = vector3f{ x, y, -1 }.unit();
-            vector3f colour = cast_ray(vector3f{ 0,0,0 }, dir, sphere);
+            vector3f colour = cast_ray(vector3f{ 0,0,0 }, dir, spheres);
             unsigned char r = static_cast <unsigned char>(255.0 * colour[0]);
             unsigned char g = static_cast <unsigned char>(255.0 * colour[1]);
             unsigned char b = static_cast <unsigned char>(255.0 * colour[2]);
@@ -67,13 +77,17 @@ void render(const sphere& sphere) {
         }
     }
     
-    framebuffer.write_tga_file("framebuffer-00.tga");
+    framebuffer.write_tga_file("framebuffer-02.tga");
 }
 
 int main(int argc, char** argv)
 {
-    sphere s0; s0.centre = { -3, 0, -16 }; s0.radius = 2.0;
+    std::vector<sphere> spheres;
+    spheres.push_back(sphere({ -3, 0, -16 }, 2.0, { 0.0,0.0,0.8 }));
+    spheres.push_back(sphere({ 2, 2.5, -24 }, 2.0, { 1.0,0.0,0.0 }));
+    spheres.push_back(sphere({ -2, -5, -20 }, 2.0, { 0.0,0.8,0.0 }));
+    spheres.push_back(sphere({ 1, 1, -30 }, 2.0, { 0.0,0.8,0.8 }));
 
-    render(s0);
+    render(spheres);
     return 0;
 }
