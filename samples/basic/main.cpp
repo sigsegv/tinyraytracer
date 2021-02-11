@@ -2,9 +2,11 @@
 #include <algorithm>
 #include <vector>
 #include <tgaimage.h>
+#include <vector2.hpp>
 #include <vector3.hpp>
 
 using vector3f = vector3<float>;
+using vector2f = vector2<float>;
 
 bool ray_intersect(const vector3f& o, const vector3f& dir, const vector3f& c, float r, float& t)
 {
@@ -23,20 +25,32 @@ bool ray_intersect(const vector3f& o, const vector3f& dir, const vector3f& c, fl
     return true;
 }
 
+struct material_t {
+    vector3f diffuse_colour;
+    vector2f albedo;
+    float specular_exponent;
+    material_t(const vector3f& diffuse_colour, const vector2f& albedo, float speculat_exponent)
+        : diffuse_colour(diffuse_colour), albedo(albedo), specular_exponent(specular_exponent)
+    {
+
+    }
+};
+
 struct light {
+    vector3f position;
+    float intensity;
     light(const vector3f& position, float intensity) : position(position), intensity(intensity)
     {
 
     }
-    vector3f position;
-    float intensity;
 };
 
 struct sphere {
     vector3f centre;
     float radius;
-    vector3f colour;
-    sphere(const vector3f& centre, float radius, const vector3f& colour) : centre(centre), radius(radius), colour(colour)
+    material_t material;
+    sphere(const vector3f& centre, float radius, const material_t& material)
+        : centre(centre), radius(radius), material(material)
     {
 
     }
@@ -59,7 +73,7 @@ vector3f cast_ray(const vector3f& orig, const vector3f& dir, std::vector<sphere>
             const vector3f diffuse_light_dir = (light.position - p).unit();
             const vector3f normal = (p - sphere.centre).unit();
             const float diffuse_light_intensity = light.intensity * std::max(0.0f, diffuse_light_dir.dot(normal));
-            return sphere.colour * diffuse_light_intensity;
+            return sphere.material.diffuse_colour * diffuse_light_intensity;
         }
     }
     return vector3f{ 0.2, 0.2, 0.2 };
@@ -99,10 +113,10 @@ int main(int argc, char** argv)
 {
     std::vector<sphere> spheres;
     // sort closest to farthest
-    spheres.push_back(sphere({ -3, 0, -16 }, 2.0, { 0.0,0.0,0.8 }));
-    spheres.push_back(sphere({ -2, -5, -20 }, 2.0, { 0.0,0.8,0.0 }));
-    spheres.push_back(sphere({ 2, 2.5, -24 }, 2.0, { 1.0,0.0,0.0 }));
-    spheres.push_back(sphere({ 1, 1, -30 }, 2.0, { 0.0,0.8,0.8 }));
+    spheres.push_back(sphere({ -3, 0, -16 }, 2.0, material_t({ 0.0,0.0,0.8 }, { 0.0, 0.0 }, 2.0)));
+    spheres.push_back(sphere({ -2, -5, -20 }, 2.0, material_t({ 0.0,0.8,0.0 }, { 0.0, 0.0 }, 2.0)));
+    spheres.push_back(sphere({ 2, 2.5, -24 }, 2.0, material_t({ 1.0,0.0,0.0 }, { 0.0, 0.0 }, 2.0)));
+    spheres.push_back(sphere({ 1, 1, -30 }, 2.0, material_t({ 0.0,0.8,0.8 }, { 0.0, 0.0 }, 2.0)));
     
     light l0({3,10,0}, 0.8);
 
